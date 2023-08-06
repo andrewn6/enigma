@@ -1,6 +1,6 @@
 use yew::prelude::*;
-use yew::hooks::use_interval;
-use std::time::Duration;
+use std::{ops::Deref};
+use yew_hooks::use_interval;
 
 #[derive(Clone, Copy)]
 struct Vector2 {
@@ -8,14 +8,12 @@ struct Vector2 {
   y: f64
 }
 
+#[derive(Clone, Copy)]
 struct Projectile {
   position: Vector2,
   velocity: Vector2,
 }
   
-struct Model {
-  caliber: f64
-}
 
 fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> f64 {
   let drag_coefficient = 1.0 / (ballistic_coefficient * caliber.powi(2));
@@ -23,11 +21,11 @@ fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> f64 {
   -0.5 * drag_coefficient * air_density * v.powi(2)
 }
 
-fn update_velocity(projectile: &mut Projecttile, dt: f64, wind: f64, caliber: f64, ballistic::coefficient: f64) {
- let v  =  (projectile.velocity.x.powi(2) = projectile.velocity.y.powi(2)).sqrt();
+fn update_velocity(projectile: &mut Projectile, dt: f64, wind: f64, caliber: f64, ballistic_coefficient: f64) {
+ let v  =  (projectile.velocity.x.powi(2) + projectile.velocity.y.powi(2)).sqrt();
  let drag = drag_force(v, caliber, ballistic_coefficient);
  let acceleration_x = (wind + drag * projectile.velocity.x / v) / 10.0;
- let acceleration_y = (-9.81 + drag * projecttile.velocity.y / v) / 10.0;
+ let acceleration_y = (-9.81 + drag * projectile.velocity.y / v) / 10.0;
 
  projectile.velocity.x += acceleration_x * dt;
  projectile.velocity.y += acceleration_y * dt;
@@ -47,31 +45,35 @@ fn BallisticCalculator() -> Html {
   let projectile = use_state(|| Projectile {
     position: Vector2 { x: 0.0, y: 0.0 },
     velocity: Vector2 {
-      x: 850.0 * (elevation.to_owned().into_inner() * std::f64::consts::PI / 180.0.cos()
-      y: 850.0 * (elevation.to_owned().into_inner() * std::f64::consts::PI / 180.0).sin(),
-    },
-  });
+            // Decomposing initial velocity into horizontal (x) and vertical (y) components using the elevation angle.
+            x: 850.0 * (elevation.deref() * std::f64::consts::PI / 180.0).cos(),
+            y: 850.0 * (elevation.deref() * std::f64::consts::PI / 180.0).sin(),
+        },
+  }); 
+  
+  let projectile_clone = projectile.clone();
 
   use_interval(
-      {
-        let projectile = projectile.clone();
-        let wind = wind.clone();
-        let caliber = caliber.clone();
-        let ballistic_coefficient = ballistic_coefficient.clone();
-        
+      {  
         move || {
-          let mut projectile = projectile.to_owned().into_inner();
+          let mut projectile_value = *projectile.clone();
+          let wind_value = *wind.clone();
+          let caliber_value = *caliber.clone();
+          let ballistic_coefficient_value = *ballistic_coefficient.clone();
           let dt = 0.01;
 
-          update_velocity(&mut projectile, dt, wind.into_inner(), caliber.into_inner(), ballistic_coefficient.into_inne());
-          update_position(&mut projectile, dt);
+          update_velocity(&mut projectile_value, dt, wind_value, caliber_value, ballistic_coefficient_value);
+          update_position(&mut projectile_value, dt);
+
+          projectile.set(projectile_value);
         }
       },
+      10,
   );
 
   html! {
     <div>
-      <div>{format!("Position: ({}, {})", projectile.into_inner().position.x, projectile.into_inner().position.y)}</div>
+      <div>{format!("Position: ({}, {})", projectile_clone.position.x, projectile_clone.position.y)}</div>
     </div>
   }
 
