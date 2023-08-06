@@ -24,7 +24,7 @@ fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> f64 {
 }
 
 fn update_velocity(projectile: &mut Projecttile, dt: f64, wind: f64, caliber: f64, ballistic:coefficient: f64) {
- let v  =  (projecttile.velocity.x.powi(2) = projectile.velocity.y.powi(2)).sqrt();
+ let v  =  (projectile.velocity.x.powi(2) = projectile.velocity.y.powi(2)).sqrt();
  let drag = drag_force(v, caliber, ballistic_coefficient);
  let acceleration_x = (wind + drag * projectile.velocity.x / v) / 10.0;
  let acceleration_y = (-9.81 + drag * projecttile.velocity.y / v) / 10.0;
