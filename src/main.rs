@@ -3,6 +3,7 @@ use std::{ops::Deref};
 use web_sys::HtmlInputElement;
 use wasm_bindgen::JsCast;
 use yew_hooks::use_interval;
+use yew::events::SubmitEvent;
 
 #[derive(Clone, Copy)]
 struct Vector2 {
@@ -98,7 +99,8 @@ fn BallisticCalculator() -> Html {
   let on_submit = Callback::from({
     let elevation = elevation.clone();
     let projectile = projectile.clone();
-    move |_| {
+    move |e: SubmitEvent| {
+      e.prevent_default();
       let new_velocity = Vector2 {
         x: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).cos(),
         y: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).sin(),
@@ -131,7 +133,7 @@ fn BallisticCalculator() -> Html {
   html! {
     <div>
     <form onsubmit={on_submit}>
-      <input type="number" placeholder="Wind" oninput={on_wind_input} />
+      <input type="number" step="0.01" placeholder="Wind" oninput={on_wind_input} />
       <input type="number" placeholder="Elevation" oninput={on_elevation_input} />
       <input type="number" step="0.00001" placeholder="Caliber" oninput={on_caliber_input} />
       <input type="number" placeholder="Ballistic Coefficient" oninput={on_ballistic_coefficient_input} step="0.01" min="0" max="1" />
