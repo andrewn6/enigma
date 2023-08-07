@@ -35,7 +35,7 @@ fn update_velocity(projectile: &mut Projectile, dt: f64, wind: f64, caliber: f64
 
 fn update_position(projectile: &mut Projectile, dt: f64) {
   projectile.position.x += projectile.velocity.x * dt;
-  projectile.velocity.y += projectile.velocity.y * dt;
+  projectile.position.y += projectile.velocity.y * dt;
 }
 
 #[function_component]
@@ -131,14 +131,13 @@ fn BallisticCalculator() -> Html {
     <form onsubmit={on_submit}>
       <input type="number" placeholder="Wind" oninput={on_wind_input} />
       <input type="number" placeholder="Elevation" oninput={on_elevation_input} />
-      <input type="number" placeholder="Caliber" oninput={on_caliber_input} />
-      <input type="number" placeholder="Ballistic Coefficient" oninput={on_ballistic_coefficient_input} />
+      <input type="number" step="0.00001" placeholder="Caliber" oninput={on_caliber_input} />
+      <input type="number" placeholder="Ballistic Coefficient" oninput={on_ballistic_coefficient_input} step="0.01" min="0" max="1" />
       <button type="submit">{"Submit"}</button>
     </form>
     <div>{format!("Position: ({}, {})", projectile_clone_for_position.position.x, projectile_clone_for_position.position.y)}</div>
     </div>
   }
-
 
 }
 
