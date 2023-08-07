@@ -1,2 +1,2 @@
 #!/bin/bash
-trunk serve
+trunk build && trunk serve
