@@ -1,5 +1,7 @@
 use yew::prelude::*;
 use std::{ops::Deref};
+use web_sys::HtmlInputElement;
+use wasm_bindgen::JsCast;
 use yew_hooks::use_interval;
 
 #[derive(Clone, Copy)]
@@ -44,36 +46,96 @@ fn BallisticCalculator() -> Html {
   let ballistic_coefficient = use_state(|| 0.4);
   let projectile = use_state(|| Projectile {
     position: Vector2 { x: 0.0, y: 0.0 },
-    velocity: Vector2 {
-            // Decomposing initial velocity into horizontal (x) and vertical (y) components using the elevation angle.
-            x: 850.0 * (elevation.deref() * std::f64::consts::PI / 180.0).cos(),
-            y: 850.0 * (elevation.deref() * std::f64::consts::PI / 180.0).sin(),
-        },
-  }); 
-  
+    velocity: Vector2 { x: 0.0, y: 0.0 },
+  });
+
+  let on_wind_input = {
+      let wind = wind.clone();
+      Callback::from(move |e: InputEvent| {
+          if let Some(input) = e.target().unwrap().dyn_ref::<HtmlInputElement>() {
+              if let Ok(value) = input.value().parse() {
+                  wind.set(value);
+              }
+          }
+      })
+  };
+
+  let on_elevation_input =  {
+    let elevation = elevation.clone();
+    Callback::from(move |e: InputEvent| {
+        if let Some(input) = e.target().unwrap().dyn_ref::<HtmlInputElement>() {
+            if let Ok(value) = input.value().parse() {
+                elevation.set(value);
+            }
+        }
+    })
+  };
+
+  let on_caliber_input = {
+    let caliber = caliber.clone();
+    Callback::from(move |e: InputEvent| {
+        if let Some(input) = e.target().unwrap().dyn_ref::<HtmlInputElement>() {
+            if let Ok(value) = input.value().parse() {
+                caliber.set(value);
+            }
+        }
+    })
+  };
+    
+  let on_ballistic_coefficient_input = {
+    let ballistic_coefficient = ballistic_coefficient.clone();
+    Callback::from(move |e: InputEvent| {
+        if let Some(input) = e.target().unwrap().dyn_ref::<HtmlInputElement>() {
+            if let Ok(value) = input.value().parse() {
+                ballistic_coefficient.set(value);
+            }
+        }
+    })
+  };
+
+  let on_submit = Callback::from({
+    let elevation = elevation.clone();
+    let projectile = projectile.clone();
+    move |_| {
+      let new_velocity = Vector2 {
+        x: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).cos(),
+        y: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).sin(),
+      };
+      let mut proj = *projectile.deref();
+      proj.velocity = new_velocity;
+      projectile.set(proj);
+    }
+  });
+
   let projectile_clone = projectile.clone();
+  let projectile_clone_for_position = projectile.clone();
 
   use_interval(
-      {  
-        move || {
-          let mut projectile_value = *projectile.clone();
-          let wind_value = *wind.clone();
-          let caliber_value = *caliber.clone();
-          let ballistic_coefficient_value = *ballistic_coefficient.clone();
+      move || {
+          let mut projectile_value = *projectile_clone.deref();;
+          let wind_value = *wind.deref();
+          let caliber_value = *caliber.deref();
+          let ballistic_coefficient_value = *ballistic_coefficient.deref();
           let dt = 0.01;
 
           update_velocity(&mut projectile_value, dt, wind_value, caliber_value, ballistic_coefficient_value);
           update_position(&mut projectile_value, dt);
 
           projectile.set(projectile_value);
-        }
       },
       10,
   );
-
+  
   html! {
     <div>
-      <div>{format!("Position: ({}, {})", projectile_clone.position.x, projectile_clone.position.y)}</div>
+    <form onsubmit={on_submit}>
+      <input type="number" placeholder="Wind" oninput={on_wind_input} />
+      <input type="number" placeholder="Elevation" oninput={on_elevation_input} />
+      <input type="number" placeholder="Caliber" oninput={on_caliber_input} />
+      <input type="number" placeholder="Ballistic Coefficient" oninput={on_ballistic_coefficient_input} />
+      <button type="submit">{"Submit"}</button>
+    </form>
+    <div>{format!("Position: ({}, {})", projectile_clone_for_position.position.x, projectile_clone_for_position.position.y)}</div>
     </div>
   }
 

@@ -48,6 +48,8 @@ dependencies = [
 name = "ballistic-calc"
 version = "0.1.0"
 dependencies = [
+ "wasm-bindgen",
+ "web-sys",
  "yew",
  "yew-hooks",
 ]
