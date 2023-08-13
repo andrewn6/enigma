@@ -1,9 +1,15 @@
+use rapier3d::prelude::ColliderSet;
 use yew::prelude::*;
 use std::{ops::Deref};
 use web_sys::HtmlInputElement;
 use wasm_bindgen::JsCast;
 use yew_hooks::use_interval;
 use yew::events::SubmitEvent;
+
+use rapier3d::na::Vector3;
+use rapier3d::dynamics::{RigidBodyBuilder, RigidBodySet};
+use rapier3d::geometry::{ColliderBuilder};
+use rapier3d::pipeline::PhysicsPipeline;
 
 #[derive(Clone, Copy)]
 struct Vector2 {
@@ -52,6 +58,16 @@ fn BallisticCalculator() -> Html {
     velocity: Vector2 { x: 0.0, y: 0.0 },
   });
 
+  let physics = use_state(|| {
+    let physics_pipeline = PhysicsPipeline::new();
+    let rigid_bodies = RigidBodySet::new();
+
+    let colliders = ColliderSet::new();
+    (physics_pipeline, rigid_bodies, colliders)
+  });
+
+  let gravity = Vector3::new(0.0, -9.81, 0.0);
+
   let on_wind_input = {
       let wind = wind.clone();
       Callback::from(move |e: InputEvent| {
@@ -99,6 +115,7 @@ fn BallisticCalculator() -> Html {
   let on_submit = Callback::from({
     let elevation = elevation.clone();
     let projectile = projectile.clone();
+    let physics_clone = physics.clone();
     move |e: SubmitEvent| {
       e.prevent_default();
       let new_velocity = Vector2 {
@@ -108,6 +125,23 @@ fn BallisticCalculator() -> Html {
       let mut proj = *projectile.deref();
       proj.velocity = new_velocity;
       projectile.set(proj);
+
+      // Use get() here
+      let mut current_physics = *physics_clone.deref();
+      let lin_velocity = Vector3::new(new_velocity.x as f32, new_velocity.y as f32, 0.0);
+
+      let bullet = RigidBodyBuilder::dynamic()
+        .translation(Vector3::new(0.0, 0.0, 0.0))
+        .linvel(lin_velocity)
+        .build();
+
+      let bullet_handle = current_physics.1.insert(bullet);
+
+      let collider = ColliderBuilder::ball(0.00762).build();
+      let _collider_handle = current_physics.2.insert_with_parent(collider, bullet_handle);
+      current_physics.2.insert(collider, bullet_handle, &mut current_physics.1);
+
+      physics_clone.set(current_physics);
     }
   });
 
