@@ -1,3 +1,1 @@
-a basic ballistic calculator built with wasm
-
-this will eventually support a real simulation with rapier.rs
+a basic ballistic calculator built with wasm + rapier.rs for simulation

@@ -1,14 +1,19 @@
-use rapier3d::prelude::ColliderSet;
-use yew::prelude::*;
+use std::borrow::BorrowMut;
 use std::{ops::Deref};
+use std::rc::Rc;
+use std::cell::RefCell;
+
+use nalgebra as na;
+use yew::prelude::*;
 use web_sys::HtmlInputElement;
 use wasm_bindgen::JsCast;
 use yew_hooks::use_interval;
 use yew::events::SubmitEvent;
 
 use rapier3d::na::Vector3;
+use rapier3d::prelude::{self, ImpulseJointSet, MultibodyJointSet, CCDSolver};
 use rapier3d::dynamics::{RigidBodyBuilder, RigidBodySet};
-use rapier3d::geometry::{ColliderBuilder};
+use rapier3d::prelude::{ColliderBuilder, ColliderSet, IntegrationParameters, IslandManager};
 use rapier3d::pipeline::PhysicsPipeline;
 
 #[derive(Clone, Copy)]
@@ -22,7 +27,56 @@ struct Projectile {
   position: Vector2,
   velocity: Vector2,
 }
+
+#[derive(Clone)]
+struct PhysicsState {
+  pipeline: Rc<RefCell<PhysicsPipeline>>,
+  rigid_bodies: Rc<RefCell<RigidBodySet>>,
+  colliders: Rc<RefCell<ColliderSet>>,
+  island_manager: Rc<RefCell<IslandManager>>,
+  broad_phase: Rc<RefCell<rapier3d::geometry::BroadPhase>>,
+  narrow_phase: Rc<RefCell<rapier3d::geometry::NarrowPhase>>,
+}
   
+impl PhysicsState {
+  fn new() -> Self {
+    PhysicsState {
+      pipeline: Rc::new(RefCell::new(PhysicsPipeline::new())),
+      rigid_bodies: Rc::new(RefCell::new(RigidBodySet::new())),
+      colliders: Rc::new(RefCell::new(ColliderSet::new())),
+      island_manager: Rc::new(RefCell::new(IslandManager::new())),
+      broad_phase: Rc::new(RefCell::new(rapier3d::geometry::BroadPhase::new())),
+      narrow_phase: Rc::new(RefCell::new(rapier3d::geometry::NarrowPhase::new())),
+    }
+  }
+
+  fn step(&mut self, dt: f32) {
+    let integration_parameters = IntegrationParameters::default();
+    let gravity = Vector3::new(0.0, -9.81, 0.0);
+    let mut ccd_solver = CCDSolver::new();
+    let physics_hooks = (); 
+    let event_handler = (); 
+
+    let mut rigid_bodies_borrowed = self.rigid_bodies.borrow_mut();
+    let mut colliders_borrowed = self.colliders.borrow_mut();
+    let mut island_manager_borrowed = self.island_manager.borrow_mut();
+    let mut broad_phase_borrowed = self.broad_phase.borrow_mut();
+    let mut narrow_phase_borrowed = self.narrow_phase.borrow_mut();
+   
+    self.pipeline.borrow_mut().step(
+      &gravity,
+      &integration_parameters,
+      &mut island_manager_borrowed,
+      &mut broad_phase_borrowed,
+      &mut narrow_phase_borrowed,
+      &mut rigid_bodies_borrowed,
+      &mut colliders_borrowed,
+      &ccd_solver,
+      &physics_hooks,
+      &event_handler
+    );
+  }
+}
 
 fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> f64 {
   let drag_coefficient = 1.0 / (ballistic_coefficient * caliber.powi(2));
@@ -58,13 +112,7 @@ fn BallisticCalculator() -> Html {
     velocity: Vector2 { x: 0.0, y: 0.0 },
   });
 
-  let physics = use_state(|| {
-    let physics_pipeline = PhysicsPipeline::new();
-    let rigid_bodies = RigidBodySet::new();
-
-    let colliders = ColliderSet::new();
-    (physics_pipeline, rigid_bodies, colliders)
-  });
+  let physics = use_state(|| Rc::new(RefCell::new(PhysicsState::new())));
 
   let gravity = Vector3::new(0.0, -9.81, 0.0);
 
@@ -113,9 +161,10 @@ fn BallisticCalculator() -> Html {
   };
 
   let on_submit = Callback::from({
+    let physics = physics.clone();
     let elevation = elevation.clone();
     let projectile = projectile.clone();
-    let physics_clone = physics.clone();
+
     move |e: SubmitEvent| {
       e.prevent_default();
       let new_velocity = Vector2 {
@@ -126,8 +175,6 @@ fn BallisticCalculator() -> Html {
       proj.velocity = new_velocity;
       projectile.set(proj);
 
-      // Use get() here
-      let mut current_physics = *physics_clone.deref();
       let lin_velocity = Vector3::new(new_velocity.x as f32, new_velocity.y as f32, 0.0);
 
       let bullet = RigidBodyBuilder::dynamic()
@@ -135,13 +182,11 @@ fn BallisticCalculator() -> Html {
         .linvel(lin_velocity)
         .build();
 
-      let bullet_handle = current_physics.1.insert(bullet);
+      let bullet_handle = physics.set(bullet);
 
       let collider = ColliderBuilder::ball(0.00762).build();
-      let _collider_handle = current_physics.2.insert_with_parent(collider, bullet_handle);
-      current_physics.2.insert(collider, bullet_handle, &mut current_physics.1);
-
-      physics_clone.set(current_physics);
+      let collider_handle = physics.insert(collider);
+      physics[collider_handle].parent();
     }
   });
 

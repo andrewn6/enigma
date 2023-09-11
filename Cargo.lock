@@ -63,6 +63,7 @@ dependencies = [
 name = "ballistic-calc"
 version = "0.1.0"
 dependencies = [
+ "nalgebra",
  "rapier3d",
  "wasm-bindgen",
  "web-sys",
