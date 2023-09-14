@@ -1,8 +1,10 @@
+use wasm_bindgen::JsCast;
 use yew::prelude::*;
 use web_sys::HtmlInputElement;
 use yew::events::SubmitEvent;
 use nalgebra as na;
 
+use std::ops::Deref;
 use std::f64::consts::PI;
 use parry3d::shape::{Cuboid, Shape};
 use parry3d::math::Isometry;
@@ -38,16 +40,16 @@ fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> Vector3 {
 fn update_velocity(
     projectile: &mut Projectile,
     dt: f64,
-    wind: vector3,
+    wind: Vector3,
     caliber: f64,
     ballistic_coefficient: f64,
 ) {
     let v = (projectile.velocity.x.powi(2) + projectile.velocity.y.powi(2) + projectile.velocity.z.powi(2)).sqrt();
     if v != 0.0 {
         let drag = drag_force(v, caliber, ballistic_coefficient);
-        let acceleration_x = (wind.x + drag.x * projectile.velocity.x / v);
-        let acceleration_y = (wind.y + drag.y * projectile.velocity.y / v);
-        let acceleration_z = (wind.z + drag.z * projectile.velocity.z / v);
+        let acceleration_x = wind.x + drag.x * projectile.velocity.x / v;
+        let acceleration_y = wind.y + drag.y * projectile.velocity.y / v;
+        let acceleration_z = wind.z + drag.z * projectile.velocity.z / v;
 
         projectile.velocity.x += acceleration_x * dt;
         projectile.velocity.y += acceleration_y * dt;
@@ -122,7 +124,7 @@ fn BallisticCalculator() -> Html {
 
         move |e: SubmitEvent| {
             e.prevent_default();
-            let new_velocity = Vector2 {
+            let new_velocity = Vector3 {
                 x: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).cos(),
                 y: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).sin(),
                 z: 0.0,
