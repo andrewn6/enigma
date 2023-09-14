@@ -2,10 +2,12 @@ use wasm_bindgen::JsCast;
 use yew::prelude::*;
 use web_sys::HtmlInputElement;
 use yew::events::SubmitEvent;
-use nalgebra as na;
+use yew_hooks::use_interval;
 
+use nalgebra as na;
 use std::ops::Deref;
 use std::f64::consts::PI;
+
 use parry3d::shape::{Cuboid, Shape};
 use parry3d::math::Isometry;
 
@@ -79,7 +81,7 @@ fn BallisticCalculator() -> Html {
         Callback::from(move |e: InputEvent| {
             if let Some(input) = e.target().unwrap().dyn_ref::<HtmlInputElement>() {
                 if let Ok(value) = input.value().parse() {
-                    wind.set(Vector3 { x: value, y: value, z: value });
+                    wind.set(value);
                 }
             }
         })
