@@ -3,39 +3,62 @@ use web_sys::HtmlInputElement;
 use yew::events::SubmitEvent;
 use nalgebra as na;
 
+use std::f64::consts::PI;
+use parry3d::shape::{Cuboid, Shape};
+use parry3d::math::Isometry;
+
+pub struct ParryShape {
+  width: f32,
+  height: f32,
+}
+
 #[derive(Clone, Copy)]
-struct Vector2 {
+struct Vector3 {
     x: f64,
     y: f64,
+    z: f64,
 }
 
 #[derive(Clone, Copy)]
 struct Projectile {
-    position: Vector2,
-    velocity: Vector2,
+    position: Vector3,
+    velocity: Vector3,
 }
 
-fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> f64 {
+fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> Vector3 {
     let drag_coefficient = 1.0 / (ballistic_coefficient * caliber.powi(2));
     let air_density = 1.225;
-    -0.5 * drag_coefficient * air_density * v.powi(2)
+    Vector3 {
+        x: -0.5 * drag_coefficient * air_density * v.powi(2),
+        y: -0.5 * drag_coefficient * air_density * v.powi(2),
+        z: -0.5 * drag_coefficient * air_density * v.powi(2),
+    }
 }
 
-fn update_velocity(projectile: &mut Projectile, dt: f64, wind: f64, caliber: f64, ballistic_coefficient: f64) {
-    let v = (projectile.velocity.x.powi(2) + projectile.velocity.y.powi(2)).sqrt();
+fn update_velocity(
+    projectile: &mut Projectile,
+    dt: f64,
+    wind: vector3,
+    caliber: f64,
+    ballistic_coefficient: f64,
+) {
+    let v = (projectile.velocity.x.powi(2) + projectile.velocity.y.powi(2) + projectile.velocity.z.powi(2)).sqrt();
     if v != 0.0 {
         let drag = drag_force(v, caliber, ballistic_coefficient);
-        let acceleration_x = (wind + drag * projectile.velocity.x / v);
-        let acceleration_y = (-9.81 + drag * projectile.velocity.y / v);
+        let acceleration_x = (wind.x + drag.x * projectile.velocity.x / v);
+        let acceleration_y = (wind.y + drag.y * projectile.velocity.y / v);
+        let acceleration_z = (wind.z + drag.z * projectile.velocity.z / v);
 
         projectile.velocity.x += acceleration_x * dt;
         projectile.velocity.y += acceleration_y * dt;
+        projectile.velocity.z += acceleration_z * dt;
     }
 }
 
 fn update_position(projectile: &mut Projectile, dt: f64) {
     projectile.position.x += projectile.velocity.x * dt;
     projectile.position.y += projectile.velocity.y * dt;
+    projectile.position.z += projectile.velocity.z * dt;
 }
 
 #[function_component]
@@ -45,8 +68,8 @@ fn BallisticCalculator() -> Html {
     let caliber = use_state(|| 0.00762);
     let ballistic_coefficient = use_state(|| 0.4);
     let projectile = use_state(|| Projectile {
-        position: Vector2 { x: 0.0, y: 0.0 },
-        velocity: Vector2 { x: 0.0, y: 0.0 },
+        position: Vector3 { x: 0.0, y: 0.0, z: 0.0 },
+        velocity: Vector3 { x: 0.0, y: 0.0, z: 0.0 },
     });
 
     let on_wind_input = {
@@ -54,7 +77,7 @@ fn BallisticCalculator() -> Html {
         Callback::from(move |e: InputEvent| {
             if let Some(input) = e.target().unwrap().dyn_ref::<HtmlInputElement>() {
                 if let Ok(value) = input.value().parse() {
-                    wind.set(value);
+                    wind.set(Vector3 { x: value, y: value, z: value });
                 }
             }
         })
@@ -102,6 +125,7 @@ fn BallisticCalculator() -> Html {
             let new_velocity = Vector2 {
                 x: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).cos(),
                 y: 850.0 * (*elevation.deref() * std::f64::consts::PI / 180.0).sin(),
+                z: 0.0,
             };
             let mut proj = *projectile.deref();
             proj.velocity = new_velocity;
