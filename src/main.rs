@@ -42,10 +42,17 @@ fn drag_force(v: f64, caliber: f64, ballistic_coefficient: f64) -> Vector3 {
 fn update_velocity(
     projectile: &mut Projectile,
     dt: f64,
-    wind: Vector3,
+    wind_speed: f64,
     caliber: f64,
     ballistic_coefficient: f64,
 ) {
+    
+    let wind = Vector3 {
+        x: wind_speed,
+        y: 0.0, 
+        z: 0.0,
+    };
+
     let v = (projectile.velocity.x.powi(2) + projectile.velocity.y.powi(2) + projectile.velocity.z.powi(2)).sqrt();
     if v != 0.0 {
         let drag = drag_force(v, caliber, ballistic_coefficient);
