@@ -171,5 +171,5 @@ fn BallisticCalculator() -> Html {
 }
 
 fn main() {
-    yew::start_app::<BallisticCalculator>();
+    yew::Renderer::<BallisticCalculator>::new().render();
 }
